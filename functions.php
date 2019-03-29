@@ -2,7 +2,7 @@
 /**
  * Set the content width based on the theme's design and stylesheet.
  */
-if (! isset( $content_width)) {
+if (!isset($content_width)) {
     $content_width = 740; /* pixels */
 }
 
@@ -17,6 +17,7 @@ if (! function_exists('silencio_setup')) {
         require(get_template_directory() . '/res/functions/users.php');
         require(get_template_directory() . '/res/functions/metaboxes.php');
         require(get_template_directory() . '/res/functions/jetpack.php');
+        // require(get_template_directory() . '/res/functions/mime-types.php');
         // require(get_template_directory() . '/res/functions/post-types.php');
         // require(get_template_directory() . '/res/functions/taxonomies.php');
 
@@ -38,57 +39,92 @@ if (function_exists('add_image_size')) {
     add_image_size('header-thumb', 1170, 400, true); //(cropped)
 }
 
+//Custom Content Image Sizes Attribute
+function silencio_content_image_sizes_attr($sizes, $size) {
+    $width = $size[0];
+
+    //Page without sidebar
+    if (get_page_template_slug() === 'template-full_width.php') {
+        if ($width > 910) {
+            return '(max-width: 768px) 92vw, (max-width: 992px) 690px, (max-width: 1200px) 910px, 1110px';
+        }
+        if ($width < 910 && $width > 690) {
+            return '(max-width: 768px) 92vw, (max-width: 992px) 690px, 910px';
+        }
+        return '(max-width: ' . $width . 'px) 92vw, ' . $width . 'px';
+    }
+
+    //Page with sidebar
+    if ($width > 597) {
+        return '(max-width: 768px) 92vw, (max-width: 992px) 450px, (max-width: 1200px) 597px, 730px';
+    }
+    if ($width < 597 && $width > 450) {
+        return '(max-width: 768px) 92vw, (max-width: 992px) 450px, 597px';
+    }
+
+    return '(max-width: ' . $width . 'px) 92vw, ' . $width . 'px';
+}
+add_filter('wp_calculate_image_sizes', 'silencio_content_image_sizes_attr', 10, 2);
+
+//Custom Thumbnail Sizes Attribute
+function silencio_post_thumbnail_sizes_attr($attr, $attachment, $size) {
+    //Calculate Image Sizes by type and breakpoint
+    //Header Images
+    if ($size === 'header-thumb') {
+        $attr['sizes'] = '(max-width: 768px) 92vw, (max-width: 992px) 450px, (max-width: 1200px) 597px, 730px';
+
+        //Blog Thumbnails
+    } elseif ($size === 'blog-thumb') {
+        $attr['sizes'] = '(max-width: 992px) 200px, (max-width: 1200px) 127px, 160px';
+    }
+    return $attr;
+}
+add_filter('wp_get_attachment_image_attributes', 'silencio_post_thumbnail_sizes_attr', 10, 3);
+
 /**
  * Enqueue scripts and styles
  */
 function silencio_scripts() {
     if (!is_admin() && defined('VIA_ENVIRONMENT') && VIA_ENVIRONMENT == 'dev') {
-        wp_deregister_script('jquery');
-        wp_register_script('jquery', get_template_directory_uri() . '/res/components/jquery/dist/jquery.js', false, '2.1.4', true);
-        wp_enqueue_script('jquery');
+        //On dev, load 3rd party JS separately
+        $vendor = 'build/vendor.min.js';
 
-        // JS
-        wp_enqueue_script('bootstrap', get_template_directory_uri() . '/res/components/bootstrap/dist/js/bootstrap.js', array('jquery'), false, true);
-        wp_enqueue_script('fitvids', get_template_directory_uri() . '/res/components/fitvids/jquery.fitvids.js', array('jquery'), false, true);
-
-        // CSS
-        wp_enqueue_style('bootstrap', get_template_directory_uri() . '/res/components/bootstrap/dist/css/bootstrap.css', array());
-        wp_enqueue_style('font-awesome', get_template_directory_uri() . '/res/components/font-awesome/css/font-awesome.css', array());
-        wp_enqueue_style('typography', get_template_directory_uri() . '/res/css/typography.css', array());
-        wp_enqueue_style('layout', get_template_directory_uri() . '/res/css/layout.css', array());
+        wp_enqueue_script(
+            'vendor',
+            get_template_directory_uri() . '/res/' . $vendor,
+            defined('VIA_DEPLOYMENT') ? VIA_DEPLOYMENT : filemtime(get_stylesheet_directory() . '/res/' . $vendor),
+            true
+        );
     }
 
-    // Disable this environment check & load min.css if you want to test in IE8 with respond.js
-    if (defined('VIA_ENVIRONMENT') && VIA_ENVIRONMENT == 'dev') {
-        $global = 'js/global.js';
-    } else {
-        $global = 'build/global.min.js';
-    }
+    $global = 'build/global.min.js';
 
-    /*
-     * If VIA_DEPLOYMENT is defined, contents are appended to bust client-side caches.
-     * If it's not defined, fall back to file modified time.
-     */
     wp_enqueue_script(
         'global',
         get_template_directory_uri() . '/res/' . $global,
-        array('jquery'),
         defined('VIA_DEPLOYMENT') ? VIA_DEPLOYMENT : filemtime(get_stylesheet_directory() . '/res/' . $global),
         true
     );
 
-    if (defined('VIA_ENVIRONMENT') && VIA_ENVIRONMENT != 'dev') {
-        wp_register_style(
-            'global',
-            get_template_directory_uri() . '/res/build/global.min.css',
-            array(),
-            defined('VIA_DEPLOYMENT') ? VIA_DEPLOYMENT : filemtime(get_stylesheet_directory() . '/res/build/global.min.css'),
-            'all'
-        );
+    wp_register_style(
+        'vendor',
+        get_template_directory_uri() . '/res/build/vendor.min.css',
+        array(),
+        defined('VIA_DEPLOYMENT') ? VIA_DEPLOYMENT : filemtime(get_stylesheet_directory() . '/res/build/vendor.min.css'),
+        'all'
+    );
 
-        // enqueing:
-        wp_enqueue_style('global');
-    }
+    wp_register_style(
+        'global',
+        get_template_directory_uri() . '/res/build/global.min.css',
+        array(),
+        defined('VIA_DEPLOYMENT') ? VIA_DEPLOYMENT : filemtime(get_stylesheet_directory() . '/res/build/global.min.css'),
+        'all'
+    );
+
+    // enqueing:
+    wp_enqueue_style('vendor');
+    wp_enqueue_style('global');
 
     if (is_singular() && comments_open() && get_option('thread_comments')) {
         wp_enqueue_script('comment-reply');
@@ -147,6 +183,23 @@ function silencio_widgets_init() {
 
 add_action('widgets_init', 'silencio_widgets_init');
 
+/*
+ * Gravityforms Markup Customization:
+ */
+add_filter('gform_submit_button', function ($button, $form) {
+    return "<button class=\"btn btn-primary\" id=\"gform_submit_button_{$form['id']}\">{$form['button']['text']}</button>";
+}, 10, 2);
+add_filter('gform_validation_message', function ($message, $form) {
+    return "<div class=\"alert alert-danger\"><h4>Error</h4><p>" . esc_html__('There was a problem with your submission.', 'gravityforms') . ' ' . esc_html__('Errors have been highlighted below.', 'gravityforms') . '</p></div>';
+}, 10, 2);
+add_filter('gform_confirmation', function ($confirmation, $form, $entry, $ajax) {
+    foreach ($form['confirmations'] as $confirm) {
+        if ($confirm['type'] === 'message') {
+            $confirmation = "<div class=\"alert alert-success\"><h4>Success</h4>$confirmation</div>";
+        }
+    }
+    return $confirmation;
+}, 10, 4);
 
 /**
  * Fix Uncaught Reference Error from Gravity Forms - Puts js call in the footer, where it should be.
@@ -201,4 +254,35 @@ if (!function_exists('debug')) {
         var_dump($var);
         echo '</pre>';
     }
+}
+/*
+* Helper function for getting post thumbnail url
+*
+*/
+function get_post_thumbnail_url($size) {
+    $thumb_id = get_post_thumbnail_id();
+    $thumb_url_array = wp_get_attachment_image_src($thumb_id, $size, true);
+    $thumb_url = $thumb_url_array[0];
+    return $thumb_url;
+}
+/**
+* Load a template part & pass in variables declared in caller scope. Optionally return as a string.
+* @param string $path path to template file, minus .php (eg. `content-page`, `partial/folder/template-name`)
+* @param array $args map of variables to load into scope
+* @param bool $echo echo or return rendered template
+* @return null or rendered template string
+*/
+function silencio_partial($path, $args = [], $echo = true) {
+    if (!empty($args)) {
+        extract($args);
+    }
+
+    if ($echo) {
+        include(locate_template($path . '.php'));
+        return;
+    }
+
+    ob_start();
+    include(locate_template($path . '.php'));
+    return ob_get_clean();
 }

@@ -82,10 +82,10 @@ Any JS files that you want to include in your `global.min.js` can be added to th
 ## LESS Mixins
 `less/lib/variables.less` contains an assortment of mixins to make theme development faster, and is a handy place to store variables available in all stylesheets.
 
-### .at2x(@path, @w, @h)
+### .at2x(@path, @size)
 Given an image path and a width & height, sets a background image on an element and creates a media query for a 2x version of that asset. Make sure your 2x asset is named the same and has `@2x` at the end of the filename, and you’re good to go.
 
-### .at2x(@path, @w, @h, @device-width)
+### .at2x(@path, @size, @device-width)
 Apply different 1x & 2x assets depending on device width.
 
 ## Theme Options
@@ -116,15 +116,24 @@ Flush out the transients used in silencio_categorized_blog.
 Silencio bundles shortcodes that allow your users to take advantage of Bootstrap’s 12 column grid. Make use of this grid in posts like so.
 
     [row]
-        [span6]
+        [col6]
             Content!
-        [/span6]
-        [span6]
+        [/col6]
+        [col6]
             More content!
-        [/span6]
+        [/col6]
     [/row]
 
-Replace span6 with span1 - span12, and make sure you don’t put more than 12 units in one row.
+Replace col6 with col1 - col12, and make sure you don’t put more than 12 units in one row. Additionally, you can add offsets to your columns.
+
+    [row]
+        [col5 offset="1"]
+            Content!
+        [/col5]
+        [col5]
+            More content!
+        [/col5]
+    [/row]
 
 ### Custom widgets
 Silencio includes two custom widgets. `/res/functions/widgets.php` is also a great place to register any custom widgets of your own.
